@@ -1,0 +1,11 @@
+@page
+@model ReceivedMessagesModel
+
+<h2>Received Messages</h2>
+
+<ul>
+@foreach (var message in Model.Messages)
+{
+    <li>@message.Timestamp: @message.Content</li>
+}
+</ul>

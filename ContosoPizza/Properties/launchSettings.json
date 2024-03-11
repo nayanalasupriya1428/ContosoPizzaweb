@@ -1,0 +1,33 @@
+{
+  "profiles": {
+    "ContosoPizza": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  },
+  "configurations": [
+    {
+      "name": "Launch Contoso Pizza",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/ContosoPizza/bin/Debug/net7.0/ContosoPizza.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/ContosoPizza",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+      }
+    }
+  ],
+  "version": "0.2.0"
+}

@@ -1,0 +1,6 @@
+{
+    "appService.preDeployTask": "publish-release",
+    "appService.deploySubpath": "ContosoPizza\\bin\\Release\\net7.0\\publish",
+    "appService.defaultWebAppToDeploy": "/subscriptions/23c5d176-1d23-4309-bb84-935af10329df/resourceGroups/appsvc_windows_centralus/providers/Microsoft.Web/sites/contosopizzaweb"
+    
+}
