@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-
 using System.Diagnostics;
 
 namespace ContosoPizza.Pages
@@ -23,6 +22,9 @@ namespace ContosoPizza.Pages
         public void OnGet()
         {
             RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+
+            // Log an error message when the error page is accessed
+            _logger.LogError($"Error page accessed. Request ID: {RequestId}");
         }
     }
 }

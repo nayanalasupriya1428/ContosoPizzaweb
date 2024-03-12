@@ -4,92 +4,94 @@ using ContosoPizza.Data;
 using ContosoPizza.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using static System.Collections.Immutable.ImmutableArray;
-using static System.Collections.Immutable.ImmutableDictionary;
 using Azure.Identity;
 
-internal class Program
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddRazorPages();
+
+// Directly set Service Bus configuration
+string serviceBusConnectionString = "Endpoint=sb://pizzawebsite.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=XhvPw6PvciFm3DmEMnTCZaDIayfdoSB9Q+ASbDx5avQ=";
+string serviceBusTopicName = "mytopic";
+string serviceBusSubscriptionName = "b1";
+
+builder.Services.AddSingleton<ServiceBusClient>(_ => new ServiceBusClient(serviceBusConnectionString));
+builder.Services.AddSingleton<ServiceBusSender>(sp =>
 {
-    private static async Task Main(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
+    var client = sp.GetRequiredService<ServiceBusClient>();
+    return client.CreateSender(serviceBusTopicName);
+});
+builder.Services.AddSingleton<ServiceBusSenderService>();
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = "InstrumentationKey=950afa3b-f60b-4c7f-b6cb-497ece055e4c;IngestionEndpoint=https://centralus-2.in.applicationinsights.azure.com/;LiveEndpoint=https://centralus.livediagnostics.monitor.azure.com/";
+});
 
-        // Configure services
-        ConfigureServices(builder.Services, builder.Configuration);
+// Configure other services
+ConfigureServices(builder.Services, builder.Configuration);
 
-        var app = builder.Build();
+var app = builder.Build();
 
-        // Configure the HTTP request pipeline
-        ConfigureApp(app);
+// Configure the HTTP request pipeline
+ConfigureApp(app);
 
-        // The Service Bus client types are safe to cache and use as a singleton for the lifetime
-        // of the application, which is best practice when messages are being published or read
-        // regularly.
-        var serviceBusConnectionString = "Endpoint=sb://pizzawebsite.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=iAwgsPPfs2iiBre+NKOyvVbm0JKHRKene+ASbDuTmQo=";
-ServiceBusClient client = new(serviceBusConnectionString);
-ServiceBusSender sender = client.CreateSender(builder.Configuration["ServiceBusTopicName"]);
+// The processor that reads and processes messages from the subscription
+ServiceBusProcessor processor = app.Services.GetRequiredService<ServiceBusClient>()
+    .CreateProcessor(serviceBusTopicName, serviceBusSubscriptionName);
 
+// Handle received messages
+async Task MessageHandler(ProcessMessageEventArgs args)
+{
+    string body = args.Message.Body.ToString();
+    Console.WriteLine($"Received: {body} from subscription");
 
-        // The processor that reads and processes messages from the subscription
-        ServiceBusProcessor processor = client.CreateProcessor(builder.Configuration["ServiceBusTopicName"], builder.Configuration["ServiceBusSubscriptionName"]);
+    // Complete the message. Messages are deleted from the subscription.
+    await args.CompleteMessageAsync(args.Message);
 
-        // Handle received messages
-        async Task MessageHandler(ProcessMessageEventArgs args)
-        {
-            string body = args.Message.Body.ToString();
-            Console.WriteLine($"Received: {body} from subscription");
+    // Store the received message
+    var messageService = app.Services.GetRequiredService<MessageService>();
+    messageService.AddReceivedMessage(body);
+}
 
-            // Complete the message. Messages are deleted from the subscription.
-            await args.CompleteMessageAsync(args.Message);
+// Handle any errors when receiving messages
+Task ErrorHandler(ProcessErrorEventArgs args)
+{
+    Console.WriteLine(args.Exception.ToString());
+    return Task.CompletedTask;
+}
 
-            // Store the received message
-            var messageService = app.Services.GetRequiredService<MessageService>();
-            messageService.AddReceivedMessage(body);
-        }
+// Start processing messages
+processor.ProcessMessageAsync += MessageHandler;
+processor.ProcessErrorAsync += ErrorHandler;
+await processor.StartProcessingAsync();
 
-        // Handle any errors when receiving messages
-        Task ErrorHandler(ProcessErrorEventArgs args)
-        {
-            Console.WriteLine(args.Exception.ToString());
-            return Task.CompletedTask;
-        }
+app.Run();
 
-        // Start processing messages
-        processor.ProcessMessageAsync += MessageHandler;
-        processor.ProcessErrorAsync += ErrorHandler;
-        await processor.StartProcessingAsync();
+// Stop processing messages and clean up resources
+await processor.StopProcessingAsync();
+await processor.DisposeAsync();
+await app.Services.GetRequiredService<ServiceBusClient>().DisposeAsync();
 
-        app.Run();
-
-        // Stop processing messages and clean up resources
-        await processor.StopProcessingAsync();
-        await processor.DisposeAsync();
-        await client.DisposeAsync();
-    }
-
-    private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
-    {
-        // Add services to the container
-        services.AddRazorPages();
-        services.AddDbContext<PizzaContext>(options =>
+void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+{
+    // Add services to the container
+    services.AddRazorPages();
+    services.AddDbContext<PizzaContext>(options =>
         options.UseSqlite("Data Source=C:\\home\\site\\wwwroot\\ContosoPizza.db"));
-        services.AddScoped<PizzaService>();
-        services.AddSingleton<MessageService>();
-    }
+    services.AddScoped<PizzaService>();
+    services.AddSingleton<MessageService>();
+}
 
-    private static void ConfigureApp(WebApplication app)
+void ConfigureApp(WebApplication app)
+{
+    // Configure the HTTP request pipeline
+    if (app.Environment.IsDevelopment())
     {
-        // Configure the HTTP request pipeline
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseExceptionHandler("/Error");
-            app.UseHsts();
-        }
-        app.UseHttpsRedirection();
-        app.UseStaticFiles();
-        app.UseRouting();
-        app.UseAuthorization();
-        app.MapRazorPages();
-        app.Run();
+        app.UseExceptionHandler("/Error");
+        app.UseHsts();
     }
+    app.UseHttpsRedirection();
+    app.UseStaticFiles();
+    app.UseRouting();
+    app.UseAuthorization();
+    app.MapRazorPages();
 }

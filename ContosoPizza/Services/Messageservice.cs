@@ -2,7 +2,9 @@
 
 using ContosoPizza.Pages;
 
+#pragma warning disable CA1050 // Declare types in namespaces
 public class MessageService
+#pragma warning restore CA1050 // Declare types in namespaces
 {
     private readonly List<MessageModel> _sentMessages = new();
     private readonly List<MessageModel> _receivedMessages = new();

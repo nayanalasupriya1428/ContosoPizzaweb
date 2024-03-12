@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Logging;
 
 namespace ContosoPizza.Pages
 {
@@ -13,7 +14,6 @@ namespace ContosoPizza.Pages
 
         public void OnGet()
         {
-
         }
     }
 }

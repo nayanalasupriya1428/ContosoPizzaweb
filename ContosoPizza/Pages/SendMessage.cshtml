@@ -1,0 +1,30 @@
+@page
+@model SendMessageModel
+
+<h2>Send a Message</h2>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<form method="post">
+    <div class="form-group">
+        <label for="Message">Message:</label>
+        <input type="text" class="form-control" id="Message" name="Message" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Send</button>
+</form>
+
+<h3>Sent Messages:</h3>
+<ul>
+    @foreach (var message in Model.SentMessages)
+    {
+        <li>@message.MessageContent (Sent at @message.SentTime)</li>
+    }
+</ul>
